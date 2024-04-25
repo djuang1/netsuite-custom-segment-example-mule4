@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	
+	<netsuite:config name="NetSuite_Config" doc:name="NetSuite Config" doc:id="8a21cc68-d758-4431-bf50-b95496522741" >
+		<netsuite:token-based-authentication-connection consumerKey="${netsuite.consumerKey}" consumerSecret="${netsuite.consumerSecret}" tokenId="${netsuite.tokenId}" tokenSecret="${netsuite.tokenSecret}" account="${netsuite.accountId}" wsdlVersion="V2021_1" signatureAlgorithm="${netsuite.signatureAlgorithm}"/>
+	</netsuite:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="7fe60627-c3cb-42f7-a11f-14ad302a1c18" file="config-local.yaml" />
+	
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="1e8cd8fe-567b-4571-9014-2e5fe5efb85f" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="netsuite-modified-object-mule4Flow" doc:id="c06befd4-28b2-4638-b0ba-a0d7068b53e5" >
+		<http:listener doc:name=":8081/get" doc:id="99cbea0d-c080-4a06-b295-f380acc59591" config-ref="HTTP_Listener_config" path="/get"/>
+		<set-variable value="#[attributes.queryParams.id]" doc:name="Set Variable" doc:id="5b54ebff-5d5a-4010-b135-662ef70ce294" variableName="internalId"/>
+		<ee:transform doc:name="Transform Message" doc:id="4c5b8cb3-c799-42e9-a87b-44698e367715" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 urn:messages.platform.webservices.netsuite.com
+ns ns01 urn:core.platform.webservices.netsuite.com
+---
+{
+	ns0#get: {
+		ns01#baseRef @(xsi#"type": "ns01:RecordRef", "type": "opportunity" , internalId: vars.internalId): null
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<netsuite:get doc:name="Get Opportunity" doc:id="01599d87-0990-4d3f-b4a1-78ab45ad82db" config-ref="NetSuite_Config" refType="RecordRef" type="opportunity"/>
+		<ee:transform doc:name="Transform Message" doc:id="f655b528-fd0a-4157-af0d-d82f560cc211" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
